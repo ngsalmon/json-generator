@@ -53,11 +53,11 @@ public class JsonDocumentGenerator {
     }
 
     private static int random(int range) {
-        return getLinnearRandomNumber(range, 2);
+        return getLinearRandomNumber(range, 2);
     }
 
     private static int random(int range, int slope) {
-        return getLinnearRandomNumber(range, slope);
+        return getLinearRandomNumber(range, slope);
     }
 
     private static int randBetween(int start, int end) {
@@ -83,17 +83,18 @@ public class JsonDocumentGenerator {
                 + RandomStringUtils.randomNumeric(3);
     }
 
-    private static String randomFlintICD10Code(int zipcode) {
+    private static String randomFlintICD10Code(int zipcode, LocalDateTime date) {
         // flint zip code range: 48501 - 48550
         // Z77.011 - lead exposure
         // T56.0X1A Toxic effect of lead and its compounds, accidental (unintentional), initial encounter
         // T56.0X1D Toxic effect of lead and its compounds, accidental (unintentional), subsequent encounter
         // T56.0X1S Toxic effect of lead and its compounds, accidental (unintentional), sequela
-        int distance = Math.abs(48525-zipcode);  // max distance ~1000
+        int distance = Math.abs(48525-zipcode) - 25;  // max distance ~1000
         distance = distance <= 0 ? 1 : distance;
+        int daysInPast = Math.abs((int) ChronoUnit.DAYS.between(LocalDateTime.now(), date));
 
-        if (rand.nextInt(distance) < 50) {
-            int option = random(5, random(5));
+        if (rand.nextInt(distance) < 5 && rand.nextInt(daysInPast <= 0 ? 1 : daysInPast) < 50) {
+            int option = random(5, random(5)) - 1;
             switch (option) {
             case 0:
                 return "Z77.011";
@@ -111,7 +112,8 @@ public class JsonDocumentGenerator {
     }
 
     private static String randomGender() {
-        String[] genders = new String[] {"M", "F", "M", "F", "M", "F", "M", "F", "M", "F", "M", "F", "M", "F", "U"};
+        String[] genders = new String[] {"M", "F", "M", "F", "M", "F", "M", "F", "M", "F", "M", "F", "M", "F",
+                "M", "F","M", "F","M", "F","M", "F","M", "F","M", "F","M", "F","M", "F","M", "F","M", "F", "U"};
         return genders[rand.nextInt(genders.length)];
     }
 
@@ -176,25 +178,26 @@ public class JsonDocumentGenerator {
 
     private static DemographicsDocument randomDoc() {
         int zipcode = getGaussian(48200, 1000);
+        LocalDateTime ingestDate = randomDateTime(2014);
         DemographicsDocument doc = new DemographicsDocument();
         doc.setId(UUID.randomUUID().toString());
         doc.setBirthDateTime(formatter.format(randomDateTime(1900)));
         doc.setBirthplace(Integer.toString(randBetween(48000, 49999)));
         doc.setEthnicity(randomEthnicity());
         doc.setGender(randomGender());
-        doc.setIngestDate(formatter.format(randomDateTime(2014)));
+        doc.setIngestDate(formatter.format(ingestDate));
         doc.setLanguage(randomLanguage());
         doc.setMaritalCode(randomMaritalCode());
         doc.setName(randomString());
         doc.setPhone(randomPhoneNumber());
         doc.setReligion(randomReligion());
-        doc.setCondition(randomFlintICD10Code(zipcode));
-        doc.setPostalCode(getGaussian(48200, 400));
+        doc.setCondition(randomFlintICD10Code(zipcode, ingestDate));
+        doc.setPostalCode(zipcode);
 
         return doc;
     }
 
-    public static int getLinnearRandomNumber(int maxSize, int slope) {
+    public static int getLinearRandomNumber(int maxSize, int slope) {
         //Get a linearly multiplied random number
         int randomMultiplier = maxSize * (maxSize + 1) / slope;
         int randomInt = rand.nextInt(randomMultiplier);
@@ -210,6 +213,7 @@ public class JsonDocumentGenerator {
     }
 
     public static int getGaussian(int mean, int stdDev) {
-        return (int) (rand.nextGaussian() * stdDev + mean);
+        double gaussian = rand.nextGaussian();
+        return (int) (Math.pow(gaussian, 2) * stdDev + mean);
     }
 }
