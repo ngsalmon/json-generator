@@ -2,8 +2,8 @@ package com.metistream.tools;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -16,16 +16,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Created by nathansalmon on 3/7/16.
  */
 public class JsonDocumentGenerator {
-    public static Random rand;
+    public static Random rand = new Random();
     static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
-    static ObjectMapper mapper;
+    static ObjectMapper mapper = new ObjectMapper();
     static Index index;
 
     public static void main(String[] args) {
         JsonDocumentGenerator generator = new JsonDocumentGenerator();
         //System.out.println(generator.generateDocuments(5));
         try {
-            index.add(generator.generateDocuments(10000));
+            index.add(generator.generateDocuments(100000));
         } catch (Exception e) {
             System.out.println("Error posting generated documents to Solr:");
             e.printStackTrace();
@@ -34,12 +34,10 @@ public class JsonDocumentGenerator {
     }
 
     JsonDocumentGenerator() {
-        rand = new Random();
-        mapper = new ObjectMapper();
         index = new Index("localhost:9983", "hcp");
     }
 
-    private List<String> generateDocuments(int numDocuments) {
+    public static List<String> generateDocuments(int numDocuments) {
         List<String> documents = new ArrayList<>();
         for (int i = 0; i < numDocuments; i++) {
             try {
@@ -67,15 +65,7 @@ public class JsonDocumentGenerator {
     }
 
     private static LocalDateTime randomDateTime(int startYear) {
-        GregorianCalendar gc = new GregorianCalendar();
-        int year = randBetween(startYear, 2015);
-        gc.set(GregorianCalendar.YEAR, year);
-        int dayOfYear = randBetween(1, gc.getActualMaximum(gc.DAY_OF_YEAR));
-        gc.set(GregorianCalendar.DAY_OF_YEAR, dayOfYear);
-        gc.set(GregorianCalendar.HOUR_OF_DAY, randBetween(0, 23));
-        gc.set(GregorianCalendar.MINUTE, randBetween(0, 59));
-        gc.set(GregorianCalendar.SECOND, randBetween(0, 59));
-        return LocalDateTime.from(gc.toZonedDateTime());
+        return LocalDateTime.now().minus(rand.nextInt(365 * (2016-startYear)), ChronoUnit.DAYS);
     }
 
     private static String randomPhoneNumber() {
@@ -93,23 +83,29 @@ public class JsonDocumentGenerator {
                 + RandomStringUtils.randomNumeric(3);
     }
 
-    private static String randomFlintICD10Code() {
+    private static String randomFlintICD10Code(int zipcode) {
+        // flint zip code range: 48501 - 48550
         // Z77.011 - lead exposure
         // T56.0X1A Toxic effect of lead and its compounds, accidental (unintentional), initial encounter
         // T56.0X1D Toxic effect of lead and its compounds, accidental (unintentional), subsequent encounter
         // T56.0X1S Toxic effect of lead and its compounds, accidental (unintentional), sequela
-        int option = random(5, random(5));
-        switch (option) {
-        case 0:
-            return "Z77.011";
-        case 1:
-            return "T56.0X1A";
-        case 2:
-            return "T56.0X1D";
-        case 3:
-            return "T56.0X1S";
-        case 4:
-            return randomICD10Code();
+        int distance = Math.abs(48525-zipcode);  // max distance ~1000
+        distance = distance <= 0 ? 1 : distance;
+
+        if (rand.nextInt(distance) < 50) {
+            int option = random(5, random(5));
+            switch (option) {
+            case 0:
+                return "Z77.011";
+            case 1:
+                return "T56.0X1A";
+            case 2:
+                return "T56.0X1D";
+            case 3:
+                return "T56.0X1S";
+            case 4:
+                return randomICD10Code();
+            }
         }
         return randomICD10Code();
     }
@@ -121,16 +117,16 @@ public class JsonDocumentGenerator {
 
     private static String randomEthnicity() {
         String[] ethnicities = new String[] {
-                "White (Caucaian)",
+                "White (Caucasian)",
                 "African American",
                 "Native American",
                 "Asian American",
-                "Pacific Islander,",
+                "Pacific Islander",
                 "Middle Eastern",
                 "Other race",
                 "Two or more races"
         };
-        return ethnicities[random(ethnicities.length, random(10))];
+        return ethnicities[random(ethnicities.length, randBetween(2, 10)) - 1];
     }
 
     private static String randomLanguage() {
@@ -147,7 +143,7 @@ public class JsonDocumentGenerator {
                 "Russian",
                 "Arabic"
         };
-        return languages[random(languages.length, randBetween(10, 50))];
+        return languages[random(languages.length, randBetween(2, 50)) - 1];
     }
 
     private static String randomMaritalCode() {
@@ -161,7 +157,7 @@ public class JsonDocumentGenerator {
                 "P",
                 "X"
         };
-        return maritalCodes[random(maritalCodes.length, randBetween(0, 2))];
+        return maritalCodes[random(maritalCodes.length, randBetween(2, 3)) - 1];
     }
 
     private static String randomReligion() {
@@ -175,26 +171,25 @@ public class JsonDocumentGenerator {
                 "Unitarian Universalism", // (0.3%)
                 "Wicca/Paganism/Druidry" // (0.1%)
         };
-        return religions[random(religions.length, randBetween(10, 50))];
+        return religions[random(religions.length, randBetween(2, 20)) - 1];
     }
 
     private static DemographicsDocument randomDoc() {
+        int zipcode = getGaussian(48200, 1000);
         DemographicsDocument doc = new DemographicsDocument();
         doc.setId(UUID.randomUUID().toString());
         doc.setBirthDateTime(formatter.format(randomDateTime(1900)));
-        doc.setBirthplace(Integer.toString(getGaussian(48550, 3)));
+        doc.setBirthplace(Integer.toString(randBetween(48000, 49999)));
         doc.setEthnicity(randomEthnicity());
         doc.setGender(randomGender());
-        doc.setIngestDate(formatter.format(randomDateTime(2015)));
+        doc.setIngestDate(formatter.format(randomDateTime(2014)));
         doc.setLanguage(randomLanguage());
         doc.setMaritalCode(randomMaritalCode());
         doc.setName(randomString());
         doc.setPhone(randomPhoneNumber());
         doc.setReligion(randomReligion());
-        // doc.setRace("race" + random);
-        //doc.setCondition("condition " + getGaussian(50, 5));
-        doc.setCondition(randomFlintICD10Code());
-        doc.setPostalCode(Integer.toString(getGaussian(48550, 2)));
+        doc.setCondition(randomFlintICD10Code(zipcode));
+        doc.setPostalCode(getGaussian(48200, 400));
 
         return doc;
     }
@@ -215,6 +210,6 @@ public class JsonDocumentGenerator {
     }
 
     public static int getGaussian(int mean, int stdDev) {
-        return (int) rand.nextGaussian() * stdDev + mean;
+        return (int) (rand.nextGaussian() * stdDev + mean);
     }
 }

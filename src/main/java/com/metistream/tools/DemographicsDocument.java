@@ -38,7 +38,7 @@ public class DemographicsDocument {
     private String language;
     private String phone;
     private String condition;
-    private String postalCode;
+    private int postalCode;
 
     public String getId() {
         return id;
@@ -144,11 +144,11 @@ public class DemographicsDocument {
         this.condition = condition;
     }
 
-    public String getPostalCode() {
+    public int getPostalCode() {
         return postalCode;
     }
 
-    public void setPostalCode(String postalCode) {
+    public void setPostalCode(int postalCode) {
         this.postalCode = postalCode;
     }
 }
